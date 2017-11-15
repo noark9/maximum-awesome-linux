@@ -7,38 +7,33 @@ def step(description)
   puts "\e[32m#{description}\e[0m"
 end
 
-def app_path(name)
-  path = "/Applications/#{name}.app"
-  ["~#{path}", path].each do |full_path|
-    return full_path if File.directory?(full_path)
-  end
-
-  return nil
+def step(description)
+  description = "-- #{description} "
+  description = description.ljust(80, '-')
+  puts
+  puts "\e[32m#{description}\e[0m"
 end
 
-def app?(name)
-  return !app_path(name).nil?
+def install_github_bundle(user, package)
+  unless File.exist? File.expand_path("~/.vim/bundle/#{package}")
+    sh "git clone https://github.com/#{user}/#{package} ~/.vim/bundle/#{package}"
+  end
 end
 
 def link_file(original_filename, symlink_filename)
   original_path = File.expand_path(original_filename)
   symlink_path = File.expand_path(symlink_filename)
-  if File.exists?(symlink_path)
-    # Symlink already configured properly. Leave it alone.
-    return if File.symlink?(symlink_path) and File.readlink(symlink_path) == original_path
-    # Never move user's files without creating backups first
-    number = 1
-    loop do
-      backup_path = "#{symlink_path}.bak"
-      if number > 1
-        backup_path = "#{backup_path}#{number}"
-      end
-      if File.exists?(backup_path)
-        number += 1
-        next
-      end
-      mv symlink_path, backup_path, :verbose => true
-      break
+  if File.exists?(symlink_path) || File.symlink?(symlink_path)
+    if File.symlink?(symlink_path)
+      symlink_points_to_path = File.readlink(symlink_path)
+      return if symlink_points_to_path == original_path
+      # Symlinks can't just be moved like regular files. Recreate old one, and
+      # remove it.
+      ln_s symlink_points_to_path, get_backup_path(symlink_path), :verbose => true
+      rm symlink_path
+    else
+      # Never move user's files without creating backups first
+      mv symlink_path, get_backup_path(symlink_path), :verbose => true
     end
   end
   ln_s original_path, symlink_path, :verbose => true
@@ -76,6 +71,13 @@ namespace :install do
     step 'the_silver_searcher'
     sh 'sudo dnf install -y the_silver_searcher'
   end
+  
+  desc 'Install Vundle'
+  task :vundle do
+    step 'vundle'
+    install_github_bundle 'VundleVim','Vundle.vim'
+    sh '~/bin/vim -c "PluginInstall!" -c "q" -c "q"'
+  end
 
   # instructions from http://www.webupd8.org/2011/04/solarized-must-have-color-paletter-for.html
   desc 'Install Solarized and fix ls'
@@ -98,6 +100,19 @@ namespace :install do
   end
 end
 
+COPIED_FILES = filemap(
+  'vimrc.local'         => '~/.vimrc.local',
+  'vimrc.bundles.local' => '~/.vimrc.bundles.local',
+  'tmux.conf.local'     => '~/.tmux.conf.local'
+)
+
+LINKED_FILES = filemap(
+  'vim'           => '~/.vim',
+  'tmux.conf'     => '~/.tmux.conf',
+  'vimrc'         => '~/.vimrc',
+  'vimrc.bundles' => '~/.vimrc.bundles'
+)
+
 desc 'Install these config files.'
 task :default do
   Rake::Task['install:update'].invoke
@@ -106,19 +121,17 @@ task :default do
   Rake::Task['install:ctags'].invoke
   Rake::Task['install:the_silver_searcher'].invoke
 
-  step 'git submodules'
-  sh 'git submodule update --init'
-
-  # TODO install gem ctags?
-  # TODO run gem ctags?
-
   step 'symlink'
-  link_file 'vim'       , '~/.vim'
-  link_file 'tmux.conf' , '~/.tmux.conf'
-  link_file 'vimrc'     , '~/.vimrc'
-  unless File.exist?(File.expand_path('~/.vimrc.local'))
-    cp File.expand_path('vimrc.local'), File.expand_path('~/.vimrc.local'), :verbose => true
+
+  LINKED_FILES.each do |orig, link|
+    link_file orig, link
   end
+
+  COPIED_FILES.each do |orig, copy|
+    cp orig, copy, :verbose => true unless File.exist?(copy)
+  end
+  
+  Rake::Task['install:vbundle'].invoke
 
   step 'solarized dark or light'
   puts
