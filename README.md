@@ -1,14 +1,14 @@
-# Maximum Awesome Linux Port
+# Maximum Awesome Fedora Linux Port
 
 * Still somewhat experimental, so use with caution.
-Linux (currently just Ubuntu) port of Maximum Awesome from (https://github.com/square/maximum-awesome).
+Linux (Only tested in my Fedora 27) port of Maximum Awesome Linux (https://github.com/justaparth/maximum-awesome-linux) and original Maximum Awesome (https://github.com/square/maximum-awesome).
+
+Update with latest (current 20171115) Maximum Awesome.
 
 ## What do you need to do it
-Ubuntu, with `git` and `rake` installed. To get them you could do
+Fedora 27, with `git`, `dnf` and `rake` installed. To get them you could do
 
-```bash
-sudo apt-get install git rake
-```
+Enter password when `dnf` ask you.
 
 ## What's in it?
 
