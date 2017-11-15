@@ -100,6 +100,13 @@ namespace :install do
   end
 end
 
+def filemap(map)
+  map.inject({}) do |result, (key, value)|
+    result[File.expand_path(key)] = File.expand_path(value)
+    result
+  end.freeze
+end
+
 COPIED_FILES = filemap(
   'vimrc.local'         => '~/.vimrc.local',
   'vimrc.bundles.local' => '~/.vimrc.bundles.local',
@@ -131,7 +138,7 @@ task :default do
     cp orig, copy, :verbose => true unless File.exist?(copy)
   end
   
-  Rake::Task['install:vbundle'].invoke
+  Rake::Task['install:vundle'].invoke
 
   step 'solarized dark or light'
   puts
